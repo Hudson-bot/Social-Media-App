@@ -6,10 +6,13 @@ exports.createProfile = async (req, res) => {
     const userId = req.user.uid;
     const photoPath = req.file ? req.file.path : '';
 
-    // Check if profile already exists for this Firebase UID
+    // Check if profile exists and return it if it does
     const existingProfile = await Profile.findOne({ user: userId });
     if (existingProfile) {
-      return res.status(400).json({ message: 'Profile already exists' });
+      return res.status(200).json({ 
+        profile: existingProfile,
+        exists: true
+      });
     }
 
     const profile = new Profile({
@@ -21,7 +24,10 @@ exports.createProfile = async (req, res) => {
 
     await profile.save();
 
-    res.status(201).json(profile);
+    res.status(201).json({
+      profile,
+      exists: false
+    });
   } catch (err) {
     console.error('Create profile error:', err);
     res.status(500).json({ error: 'Server error while creating profile' });

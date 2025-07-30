@@ -2,87 +2,139 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { auth } from '../../firebase/config';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('create');
-  const [posts, setPosts] = useState([
-    { id: 1, content: "Just finished my morning run! 🏃‍♂️" },
-    { id: 2, content: "Working on a new project. #coding" },
-  ]);
+  const [posts, setPosts] = useState([]);
   const [newPost, setNewPost] = useState('');
   const [followedUsers, setFollowedUsers] = useState([]);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profile, setProfile] = useState({
     name: '',
     bio: '',
-    photo: '/default-profile.png' 
+    photo: '/default-profile.png'
   });
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const usersToFollow = [
-    { id: 1, name: "Sarah Miller", bio: "UX Designer", photo: "https://via.placeholder.com/80" },
-    { id: 2, name: "Michael Chen", bio: "Frontend Developer", photo: "https://via.placeholder.com/80" },
-    { id: 3, name: "Emma Wilson", bio: "Digital Marketer", photo: "https://via.placeholder.com/80" },
+    { id: 1, name: "Sarah Miller", bio: "UX Designer", photo: "/user1.jpg" },
+    { id: 2, name: "Michael Chen", bio: "Frontend Developer", photo: "/user2.jpg" },
+    { id: 3, name: "Emma Wilson", bio: "Digital Marketer", photo: "/user3.jpg" },
   ];
 
-  const handlePostSubmit = (e) => {
-    e.preventDefault();
-    if (newPost.trim()) {
-      setPosts([...posts, { id: posts.length + 1, content: newPost }]);
-      setNewPost('');
-    }
-  };
-
+  // Fetch profile and posts data
   useEffect(() => {
-    const fetchProfile = async () => {
+    const fetchData = async () => {
       try {
-        const currentUser = auth.currentUser;
-      if (!currentUser) {
-        console.warn("User not authenticated");
-        return;
-      }
-        const token = await auth.currentUser.getIdToken();
-        const res = await axios.get(`http://localhost:5000/api/profile`, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
+        const token = await auth.currentUser?.getIdToken();
+        if (!token) {
+          navigate('/');
+          return;
+        }
+
+        // Fetch profile
+        const profileResponse = await axios.get('http://localhost:5000/api/profile', {
+          headers: { Authorization: `Bearer ${token}` }
         });
 
-        const { name, bio, photo } = res.data;
+        if (profileResponse.data) {
+          setProfile({
+            name: profileResponse.data.name,
+            bio: profileResponse.data.bio,
+            photo: profileResponse.data.photo 
+              ? `http://localhost:5000/${profileResponse.data.photo}`
+              : '/default-profile.png'
+          });
+        }
 
-        setProfile({
-          name,
-          bio,
-          photo: `${import.meta.env.VITE_BACKEND_URL}/${photo}`
-        });
+        // Fetch posts
+        // const postsResponse = await axios.get('http://localhost:5000/api/posts', {
+        //   headers: { Authorization: `Bearer ${token}` }
+        // });
+        // setPosts(postsResponse.data || []);
 
       } catch (err) {
-        console.error("Error fetching profile:", err);
+        console.error("Error fetching data:", err);
+        setError("Failed to load data. Please try again.");
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    fetchProfile();
-  }, []);
+    fetchData();
+  }, [navigate]);
 
-  const toggleFollow = (userId) => {
-    if (followedUsers.includes(userId)) {
-      setFollowedUsers(followedUsers.filter(id => id !== userId));
-    } else {
-      setFollowedUsers([...followedUsers, userId]);
+  const handlePostSubmit = async (e) => {
+    e.preventDefault();
+    if (!newPost.trim()) return;
+
+    try {
+      const token = await auth.currentUser.getIdToken();
+      const response = await axios.post('http://localhost:5000/api/posts', 
+        { content: newPost },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setPosts([response.data, ...posts]);
+      setNewPost('');
+    } catch (err) {
+      console.error("Error creating post:", err);
+      setError("Failed to create post. Please try again.");
     }
   };
 
-  const handleProfileEdit = () => {
-    setIsEditingProfile(!isEditingProfile);
+  const toggleFollow = (userId) => {
+    setFollowedUsers(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId) 
+        : [...prev, userId]
+    );
   };
 
-  const handleProfileChange = (e) => {
-    const { name, value } = e.target;
-    setProfile(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleProfileSubmit = (e) => {
+  const handleProfileUpdate = async (e) => {
     e.preventDefault();
-    setIsEditingProfile(false);
+    try {
+      const token = await auth.currentUser.getIdToken();
+      const formData = new FormData();
+      
+      if (profile.name) formData.append('name', profile.name);
+      if (profile.bio) formData.append('bio', profile.bio);
+      if (profile.photoFile) formData.append('profilePhoto', profile.photoFile);
+
+      const response = await axios.put('http://localhost:5000/api/profile', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      setProfile(prev => ({
+        ...prev,
+        name: response.data.name,
+        bio: response.data.bio,
+        photo: response.data.photo 
+          ? `http://localhost:5000/${response.data.photo}`
+          : prev.photo
+      }));
+      setIsEditingProfile(false);
+    } catch (err) {
+      console.error("Error updating profile:", err);
+      setError("Failed to update profile. Please try again.");
+    }
+  };
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setProfile(prev => ({
+        ...prev,
+        photo: URL.createObjectURL(file),
+        photoFile: file
+      }));
+    }
   };
 
   // Animation variants
@@ -101,23 +153,59 @@ export default function Dashboard() {
     visible: { x: 0, opacity: 1, transition: { duration: 0.3 } }
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center p-6 bg-red-50 rounded-lg max-w-md">
+          <p className="text-red-500 mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="bg-black text-white px-4 py-2 rounded"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-white flex">
       {/* Left Profile Section */}
       <div className="w-1/4 bg-black text-white p-8 relative">
         <motion.button 
-          onClick={handleProfileEdit}
+          onClick={() => setIsEditingProfile(!isEditingProfile)}
           className="absolute top-4 right-4 bg-white text-black px-4 py-2 rounded-full text-sm font-medium flex items-center gap-1 shadow-md"
           variants={buttonVariants}
           whileHover="hover"
           whileTap="tap"
-          initial="hidden"
-          animate="visible"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-          </svg>
-          Edit
+          {isEditingProfile ? (
+            <>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Cancel
+            </>
+          ) : (
+            <>
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              Edit
+            </>
+          )}
         </motion.button>
         
         <motion.div 
@@ -126,17 +214,35 @@ export default function Dashboard() {
           animate="visible"
           variants={fadeIn}
         >
-          <motion.img 
-            src={profile.photo} 
-            alt="Profile" 
-            className="w-32 h-32 rounded-full object-cover mb-4 border-4 border-white"
+          <motion.div 
+            className="relative mb-4"
             whileHover={{ scale: 1.05 }}
             transition={{ type: "spring", stiffness: 400, damping: 10 }}
-          />
+          >
+            <img 
+              src={profile.photo} 
+              alt="Profile" 
+              className="w-32 h-32 rounded-full object-cover border-4 border-white"
+            />
+            {isEditingProfile && (
+              <label className="absolute bottom-0 right-0 bg-black text-white rounded-full p-2 cursor-pointer">
+                <input 
+                  type="file" 
+                  onChange={handlePhotoChange}
+                  accept="image/*"
+                  className="hidden"
+                />
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </label>
+            )}
+          </motion.div>
           
           {isEditingProfile ? (
             <motion.form 
-              onSubmit={handleProfileSubmit} 
+              onSubmit={handleProfileUpdate}
               className="w-full"
               variants={slideIn}
             >
@@ -144,15 +250,18 @@ export default function Dashboard() {
                 type="text"
                 name="name"
                 value={profile.name}
-                onChange={handleProfileChange}
+                onChange={(e) => setProfile({...profile, name: e.target.value})}
                 className="w-full p-2 mb-2 bg-gray-800 text-white border border-gray-700 rounded focus:outline-none focus:ring-1 focus:ring-white"
+                placeholder="Your name"
+                required
               />
               <textarea
                 name="bio"
                 value={profile.bio}
-                onChange={handleProfileChange}
+                onChange={(e) => setProfile({...profile, bio: e.target.value})}
                 className="w-full p-2 mb-4 bg-gray-800 text-white border border-gray-700 rounded focus:outline-none focus:ring-1 focus:ring-white"
                 rows="3"
+                placeholder="Tell us about yourself"
               />
               <motion.button
                 type="submit"
@@ -187,12 +296,12 @@ export default function Dashboard() {
           {/* Users to Follow Section */}
           <div className="w-full">
             <h3 className="text-lg font-semibold mb-4 border-b border-gray-700 pb-2">
-              Users to Follow
+              Suggested Users
             </h3>
             <div className="space-y-4">
               {usersToFollow.map((user, index) => (
                 <motion.div 
-                  key={user.id} 
+                  key={user.id}
                   className="flex items-center justify-between bg-gray-900 p-3 rounded-lg"
                   variants={slideIn}
                   initial="hidden"
@@ -200,11 +309,10 @@ export default function Dashboard() {
                   transition={{ delay: index * 0.1 }}
                 >
                   <div className="flex items-center">
-                    <motion.img 
+                    <img 
                       src={user.photo} 
                       alt={user.name} 
-                      className="w-10 h-10 rounded-full mr-3"
-                      whileHover={{ scale: 1.1 }}
+                      className="w-10 h-10 rounded-full mr-3 object-cover"
                     />
                     <div>
                       <p className="font-medium">{user.name}</p>
@@ -222,21 +330,7 @@ export default function Dashboard() {
                     whileHover="hover"
                     whileTap="tap"
                   >
-                    {followedUsers.includes(user.id) ? (
-                      <>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        Following
-                      </>
-                    ) : (
-                      <>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                        Follow
-                      </>
-                    )}
+                    {followedUsers.includes(user.id) ? 'Following' : 'Follow'}
                   </motion.button>
                 </motion.div>
               ))}
@@ -258,9 +352,6 @@ export default function Dashboard() {
             whileHover="hover"
             whileTap="tap"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
             Create Post
           </motion.button>
           <motion.button
@@ -272,10 +363,6 @@ export default function Dashboard() {
             whileHover="hover"
             whileTap="tap"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
             View Posts
           </motion.button>
         </div>
@@ -296,6 +383,7 @@ export default function Dashboard() {
                 className="w-full p-4 border border-gray-300 mb-4 rounded-lg focus:outline-none focus:ring-1 focus:ring-black"
                 rows="4"
                 placeholder="What's on your mind?"
+                required
               />
               <motion.button
                 type="submit"
@@ -304,9 +392,6 @@ export default function Dashboard() {
                 whileHover="hover"
                 whileTap="tap"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-                </svg>
                 Post
               </motion.button>
             </form>
@@ -319,26 +404,29 @@ export default function Dashboard() {
             transition={{ duration: 0.3 }}
           >
             <h3 className="text-xl font-bold mb-4">Recent Posts</h3>
-            {posts.map((post, index) => (
-              <motion.div 
-                key={post.id} 
-                className="border-b border-gray-200 pb-6"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <div className="flex items-center mb-3">
-                  <motion.img 
-                    src={profile.photo} 
-                    alt="Profile" 
-                    className="w-10 h-10 rounded-full mr-3"
-                    whileHover={{ scale: 1.1 }}
-                  />
-                  <span className="font-medium">{profile.name}</span>
-                </div>
-                <p className="text-gray-800">{post.content}</p>
-              </motion.div>
-            ))}
+            {posts.length > 0 ? (
+              posts.map((post, index) => (
+                <motion.div 
+                  key={post.id || index}
+                  className="border-b border-gray-200 pb-6"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <div className="flex items-center mb-3">
+                    <img 
+                      src={profile.photo} 
+                      alt="Profile" 
+                      className="w-10 h-10 rounded-full mr-3 object-cover"
+                    />
+                    <span className="font-medium">{profile.name}</span>
+                  </div>
+                  <p className="text-gray-800">{post.content}</p>
+                </motion.div>
+              ))
+            ) : (
+              <p className="text-gray-500">No posts yet. Create your first post!</p>
+            )}
           </motion.div>
         )}
       </div>

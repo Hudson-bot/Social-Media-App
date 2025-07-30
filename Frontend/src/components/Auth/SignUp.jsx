@@ -30,7 +30,7 @@ export default function SignUp() {
       });
       
       // Redirect to dashboard or home page
-      navigate("/dashboard");
+      navigate("/");
     } catch (err) {
       setError(err.message || "Google sign up failed");
       console.error(err);
@@ -56,7 +56,7 @@ export default function SignUp() {
         name,
       });
       
-      navigate("/dashboard");
+      navigate("/");
     } catch (err) {
       setError(err.message || "Email sign up failed");
       console.error("Sign up error:", err);
@@ -180,7 +180,7 @@ export default function SignUp() {
           className="mt-6 text-center text-gray-400"
         >
           Already have an account?{" "}
-          <Link to="/signin" className="text-white hover:underline transition-colors">
+          <Link to="/" className="text-white hover:underline transition-colors">
             Login
           </Link>
         </motion.div>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -11,26 +11,35 @@ export default function PostLoginSetup() {
     name: '',
     bio: '',
     photo: null,
-    preview: 'https://via.placeholder.com/150'
+    preview: '/default-profile.png' // Changed from external URL to local
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [isCheckingProfile, setIsCheckingProfile] = useState(true);
 
-  // Animation variants
-  const popupVariants = {
-    hidden: { scale: 0.9, opacity: 0 },
-    visible: { 
-      scale: 1, 
-      opacity: 1,
-      transition: { type: 'spring', damping: 20, stiffness: 300 }
-    },
-    exit: { scale: 0.9, opacity: 0 }
-  };
+  // Check for existing profile on mount
+  useEffect(() => {
+    const checkProfile = async () => {
+      try {
+        const token = await auth.currentUser.getIdToken();
+        const response = await axios.get('http://localhost:5000/api/profile', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (response.data) {
+          // Profile exists, redirect to dashboard
+          navigate('/dashboard');
+        }
+      } catch (error) {
+        // Profile doesn't exist, show setup form
+        console.log('No existing profile found');
+      } finally {
+        setIsCheckingProfile(false);
+      }
+    };
 
-  const errorVariants = {
-    hidden: { opacity: 0, y: -10 },
-    visible: { opacity: 1, y: 0 }
-  };
+    checkProfile();
+  }, [navigate]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -61,9 +70,7 @@ export default function PostLoginSetup() {
         formData.append('profilePhoto', profile.photo);
       }
 
-      // Get Firebase auth token
       const token = await auth.currentUser.getIdToken();
-      
       const response = await axios.post('http://localhost:5000/api/profile', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -71,16 +78,33 @@ export default function PostLoginSetup() {
         }
       });
 
-      console.log('Profile created:', response.data);
-      setShowSetup(false);
-      setTimeout(() => navigate('/dashboard'), 500);
+      // Handle both new profile creation and existing profile cases
+      if (response.data) {
+        navigate('/dashboard');
+      }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to save profile');
-      console.error('Profile submission error:', err);
+      if (err.response?.status === 400 && err.response?.data?.message === 'Profile already exists') {
+        // If profile exists (despite our earlier check), redirect to dashboard
+        navigate('/dashboard');
+      } else {
+        setError(err.response?.data?.message || 'Failed to save profile');
+        console.error('Profile submission error:', err);
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  if (isCheckingProfile) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Checking your profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
@@ -88,7 +112,15 @@ export default function PostLoginSetup() {
         {showSetup && (
           <motion.div 
             className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-md"
-            variants={popupVariants}
+            variants={{
+              hidden: { scale: 0.9, opacity: 0 },
+              visible: { 
+                scale: 1, 
+                opacity: 1,
+                transition: { type: 'spring', damping: 20, stiffness: 300 }
+              },
+              exit: { scale: 0.9, opacity: 0 }
+            }}
             initial="hidden"
             animate="visible"
             exit="exit"
@@ -99,10 +131,7 @@ export default function PostLoginSetup() {
               {/* Photo Upload */}
               <div className="flex flex-col items-center">
                 <label htmlFor="photo-upload" className="cursor-pointer">
-                  <motion.div 
-                    whileHover={{ scale: 1.05 }}
-                    className="relative"
-                  >
+                  <motion.div whileHover={{ scale: 1.05 }} className="relative">
                     <img 
                       src={profile.preview} 
                       alt="Profile preview" 
@@ -163,9 +192,8 @@ export default function PostLoginSetup() {
               {/* Error Display */}
               {error && (
                 <motion.div 
-                  variants={errorVariants}
-                  initial="hidden"
-                  animate="visible"
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
                   className="text-red-500 text-sm mb-4 text-center"
                 >
                   {error}
