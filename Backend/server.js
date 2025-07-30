@@ -1,28 +1,43 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const connectDB = require('./config/db');
-const authRoutes = require('./routes/authRoutes');
+  require('dotenv').config();
+  const express = require('express');
+  const mongoose = require('mongoose');
+  const connectDB = require('./config/db');
+  const authRoutes = require('./routes/authRoutes');
+  const profileRoutes = require('./routes/profileRoutes');
+  const cors = require('cors');
+  const path = require('path');
 
-const app = express();
+  const app = express();
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+  // Connect to MongoDB
+  connectDB();
 
-// Database connection
-connectDB();
+  // Middleware
+  app.use(cors());
+  app.use(express.json());
+  app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Routes
-app.use('/api/auth', authRoutes);
+  // Routes
+  app.use('/api/auth', authRoutes);
+  app.use('/api/profile', profileRoutes);
 
-// Basic route for testing
-app.get('/', (req, res) => {
-  res.send('Auth API Running');
-});
+  // Basic test route
+  app.get('/', (req, res) => {
+    res.send('API is running');
+  });
 
-const PORT = process.env.PORT || 5000;
+  // Error handling middleware
+  app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ 
+      success: false,
+      message: 'Internal Server Error',
+      error: err.message 
+    });
+  });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  });

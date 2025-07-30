@@ -24,7 +24,7 @@ export default function SignIn() {
       // Get user data from MongoDB
       await getCurrentUser(token);
       
-      navigate("/dashboard");
+      navigate("/profile-setup");
     } catch (err) {
       setError(err.message || "Google login failed");
       console.error(err);
@@ -46,7 +46,7 @@ export default function SignIn() {
       // Get user data from MongoDB
       await getCurrentUser(token);
       
-      navigate("/dashboard");
+      navigate("/profile-setup");
     } catch (err) {
       setError(err.message || "Email login failed");
       console.error("Login error:", err);

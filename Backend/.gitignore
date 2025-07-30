@@ -123,6 +123,7 @@ backend/firebase-service-account.json
 firebase-service-account.json
 .firebase-service-account.json
 
-
+uploads/
+package-lock.json
 
 # End of https://mrkandreev.name/snippets/gitignore-generator/#Node

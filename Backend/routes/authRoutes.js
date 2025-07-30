@@ -12,4 +12,4 @@ router.get('/me', authController.getCurrentUser);
 router.get('/:id', userController.getUserById);
 router.put('/update', userController.updateUser);
 
-module.exports = router;
+module.exports = router;    
