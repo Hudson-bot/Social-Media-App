@@ -24,4 +24,6 @@ router.get('/',
   profileController.getProfile
 );
 
+router.get('/suggested', verifyToken, profileController.getSuggestedUsers);
+
 module.exports = router;

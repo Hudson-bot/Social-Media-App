@@ -3,6 +3,7 @@ import axios from 'axios';
 import { auth } from '../../firebase/config';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import SuggestedUsers from '../pages/SuggestedUsers';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -19,11 +20,7 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const usersToFollow = [
-    { id: 1, name: "Sarah Miller", bio: "UX Designer", photo: "/user1.jpg" },
-    { id: 2, name: "Michael Chen", bio: "Frontend Developer", photo: "/user2.jpg" },
-    { id: 3, name: "Emma Wilson", bio: "Digital Marketer", photo: "/user3.jpg" },
-  ];
+  
 
   // Fetch profile and posts data
   useEffect(() => {
@@ -294,48 +291,10 @@ export default function Dashboard() {
           )}
           
           {/* Users to Follow Section */}
-          <div className="w-full">
-            <h3 className="text-lg font-semibold mb-4 border-b border-gray-700 pb-2">
-              Suggested Users
-            </h3>
-            <div className="space-y-4">
-              {usersToFollow.map((user, index) => (
-                <motion.div 
-                  key={user.id}
-                  className="flex items-center justify-between bg-gray-900 p-3 rounded-lg"
-                  variants={slideIn}
-                  initial="hidden"
-                  animate="visible"
-                  transition={{ delay: index * 0.1 }}
-                >
-                  <div className="flex items-center">
-                    <img 
-                      src={user.photo} 
-                      alt={user.name} 
-                      className="w-10 h-10 rounded-full mr-3 object-cover"
-                    />
-                    <div>
-                      <p className="font-medium">{user.name}</p>
-                      <p className="text-gray-400 text-xs">{user.bio}</p>
-                    </div>
-                  </div>
-                  <motion.button
-                    onClick={() => toggleFollow(user.id)}
-                    className={`px-4 py-1 text-sm rounded-full font-medium flex items-center gap-1 ${
-                      followedUsers.includes(user.id) 
-                        ? 'bg-white text-black' 
-                        : 'bg-gray-800 text-white hover:bg-gray-700'
-                    }`}
-                    variants={buttonVariants}
-                    whileHover="hover"
-                    whileTap="tap"
-                  >
-                    {followedUsers.includes(user.id) ? 'Following' : 'Follow'}
-                  </motion.button>
-                </motion.div>
-              ))}
-            </div>
-          </div>
+        <SuggestedUsers 
+          followedUsers={followedUsers} 
+          toggleFollow={toggleFollow} 
+        />
         </motion.div>
       </div>
 
