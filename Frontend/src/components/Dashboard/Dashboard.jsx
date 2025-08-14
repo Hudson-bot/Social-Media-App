@@ -4,6 +4,8 @@ import { auth } from '../../firebase/config';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import SuggestedUsers from '../pages/SuggestedUsers';
+import CreatePost from '../pages/CreatePost';
+import ViewPosts from '../pages/ViewPost';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -20,7 +22,7 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  
+
 
   // Fetch profile and posts data
   useEffect(() => {
@@ -41,7 +43,7 @@ export default function Dashboard() {
           setProfile({
             name: profileResponse.data.name,
             bio: profileResponse.data.bio,
-            photo: profileResponse.data.photo 
+            photo: profileResponse.data.photo
               ? `http://localhost:5000/${profileResponse.data.photo}`
               : '/default-profile.png'
           });
@@ -70,7 +72,7 @@ export default function Dashboard() {
 
     try {
       const token = await auth.currentUser.getIdToken();
-      const response = await axios.post('http://localhost:5000/api/posts', 
+      const response = await axios.post('http://localhost:5000/api/posts',
         { content: newPost },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -84,9 +86,9 @@ export default function Dashboard() {
   };
 
   const toggleFollow = (userId) => {
-    setFollowedUsers(prev => 
-      prev.includes(userId) 
-        ? prev.filter(id => id !== userId) 
+    setFollowedUsers(prev =>
+      prev.includes(userId)
+        ? prev.filter(id => id !== userId)
         : [...prev, userId]
     );
   };
@@ -96,7 +98,7 @@ export default function Dashboard() {
     try {
       const token = await auth.currentUser.getIdToken();
       const formData = new FormData();
-      
+
       if (profile.name) formData.append('name', profile.name);
       if (profile.bio) formData.append('bio', profile.bio);
       if (profile.photoFile) formData.append('profilePhoto', profile.photoFile);
@@ -112,7 +114,7 @@ export default function Dashboard() {
         ...prev,
         name: response.data.name,
         bio: response.data.bio,
-        photo: response.data.photo 
+        photo: response.data.photo
           ? `http://localhost:5000/${response.data.photo}`
           : prev.photo
       }));
@@ -166,7 +168,7 @@ export default function Dashboard() {
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center p-6 bg-red-50 rounded-lg max-w-md">
           <p className="text-red-500 mb-4">{error}</p>
-          <button 
+          <button
             onClick={() => window.location.reload()}
             className="bg-black text-white px-4 py-2 rounded"
           >
@@ -181,7 +183,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-white flex">
       {/* Left Profile Section */}
       <div className="w-1/4 bg-black text-white p-8 relative">
-        <motion.button 
+        <motion.button
           onClick={() => setIsEditingProfile(!isEditingProfile)}
           className="absolute top-4 right-4 bg-white text-black px-4 py-2 rounded-full text-sm font-medium flex items-center gap-1 shadow-md"
           variants={buttonVariants}
@@ -204,27 +206,27 @@ export default function Dashboard() {
             </>
           )}
         </motion.button>
-        
-        <motion.div 
+
+        <motion.div
           className="flex flex-col items-center mb-8"
           initial="hidden"
           animate="visible"
           variants={fadeIn}
         >
-          <motion.div 
+          <motion.div
             className="relative mb-4"
             whileHover={{ scale: 1.05 }}
             transition={{ type: "spring", stiffness: 400, damping: 10 }}
           >
-            <img 
-              src={profile.photo} 
-              alt="Profile" 
+            <img
+              src={profile.photo}
+              alt="Profile"
               className="w-32 h-32 rounded-full object-cover border-4 border-white"
             />
             {isEditingProfile && (
               <label className="absolute bottom-0 right-0 bg-black text-white rounded-full p-2 cursor-pointer">
-                <input 
-                  type="file" 
+                <input
+                  type="file"
                   onChange={handlePhotoChange}
                   accept="image/*"
                   className="hidden"
@@ -236,9 +238,9 @@ export default function Dashboard() {
               </label>
             )}
           </motion.div>
-          
+
           {isEditingProfile ? (
-            <motion.form 
+            <motion.form
               onSubmit={handleProfileUpdate}
               className="w-full"
               variants={slideIn}
@@ -247,7 +249,7 @@ export default function Dashboard() {
                 type="text"
                 name="name"
                 value={profile.name}
-                onChange={(e) => setProfile({...profile, name: e.target.value})}
+                onChange={(e) => setProfile({ ...profile, name: e.target.value })}
                 className="w-full p-2 mb-2 bg-gray-800 text-white border border-gray-700 rounded focus:outline-none focus:ring-1 focus:ring-white"
                 placeholder="Your name"
                 required
@@ -255,7 +257,7 @@ export default function Dashboard() {
               <textarea
                 name="bio"
                 value={profile.bio}
-                onChange={(e) => setProfile({...profile, bio: e.target.value})}
+                onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
                 className="w-full p-2 mb-4 bg-gray-800 text-white border border-gray-700 rounded focus:outline-none focus:ring-1 focus:ring-white"
                 rows="3"
                 placeholder="Tell us about yourself"
@@ -275,13 +277,13 @@ export default function Dashboard() {
             </motion.form>
           ) : (
             <>
-              <motion.h2 
+              <motion.h2
                 className="text-2xl font-bold"
                 whileHover={{ scale: 1.02 }}
               >
                 {profile.name}
               </motion.h2>
-              <motion.p 
+              <motion.p
                 className="text-gray-300 text-center mt-2 mb-8"
                 whileHover={{ scale: 1.01 }}
               >
@@ -289,12 +291,12 @@ export default function Dashboard() {
               </motion.p>
             </>
           )}
-          
+
           {/* Users to Follow Section */}
-        <SuggestedUsers 
-          followedUsers={followedUsers} 
-          toggleFollow={toggleFollow} 
-        />
+          <SuggestedUsers
+            followedUsers={followedUsers}
+            toggleFollow={toggleFollow}
+          />
         </motion.div>
       </div>
 
@@ -304,9 +306,8 @@ export default function Dashboard() {
         <div className="flex mb-8 space-x-4">
           <motion.button
             onClick={() => setActiveTab('create')}
-            className={`px-6 py-3 font-medium rounded-lg flex items-center gap-2 ${
-              activeTab === 'create' ? 'bg-black text-white' : 'bg-gray-100 text-black'
-            }`}
+            className={`px-6 py-3 font-medium rounded-lg flex items-center gap-2 ${activeTab === 'create' ? 'bg-black text-white' : 'bg-gray-100 text-black'
+              }`}
             variants={buttonVariants}
             whileHover="hover"
             whileTap="tap"
@@ -315,9 +316,8 @@ export default function Dashboard() {
           </motion.button>
           <motion.button
             onClick={() => setActiveTab('view')}
-            className={`px-6 py-3 font-medium rounded-lg flex items-center gap-2 ${
-              activeTab === 'view' ? 'bg-black text-white' : 'bg-gray-100 text-black'
-            }`}
+            className={`px-6 py-3 font-medium rounded-lg flex items-center gap-2 ${activeTab === 'view' ? 'bg-black text-white' : 'bg-gray-100 text-black'
+              }`}
             variants={buttonVariants}
             whileHover="hover"
             whileTap="tap"
@@ -328,65 +328,16 @@ export default function Dashboard() {
 
         {/* Content Area */}
         {activeTab === 'create' ? (
-          <motion.div 
-            className="bg-gray-50 p-6 rounded-lg"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3 }}
-          >
-            <h3 className="text-xl font-bold mb-4">Create New Post</h3>
-            <form onSubmit={handlePostSubmit}>
-              <textarea
-                value={newPost}
-                onChange={(e) => setNewPost(e.target.value)}
-                className="w-full p-4 border border-gray-300 mb-4 rounded-lg focus:outline-none focus:ring-1 focus:ring-black"
-                rows="4"
-                placeholder="What's on your mind?"
-                required
-              />
-              <motion.button
-                type="submit"
-                className="bg-black text-white px-6 py-2 rounded-lg font-medium flex items-center gap-2 mx-auto"
-                variants={buttonVariants}
-                whileHover="hover"
-                whileTap="tap"
-              >
-                Post
-              </motion.button>
-            </form>
-          </motion.div>
+          <CreatePost
+            newPost={newPost}
+            setNewPost={setNewPost}
+            handlePostSubmit={handlePostSubmit}
+          />
         ) : (
-          <motion.div 
-            className="space-y-6"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3 }}
-          >
-            <h3 className="text-xl font-bold mb-4">Recent Posts</h3>
-            {posts.length > 0 ? (
-              posts.map((post, index) => (
-                <motion.div 
-                  key={post.id || index}
-                  className="border-b border-gray-200 pb-6"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                >
-                  <div className="flex items-center mb-3">
-                    <img 
-                      src={profile.photo} 
-                      alt="Profile" 
-                      className="w-10 h-10 rounded-full mr-3 object-cover"
-                    />
-                    <span className="font-medium">{profile.name}</span>
-                  </div>
-                  <p className="text-gray-800">{post.content}</p>
-                </motion.div>
-              ))
-            ) : (
-              <p className="text-gray-500">No posts yet. Create your first post!</p>
-            )}
-          </motion.div>
+          <ViewPosts
+            posts={posts}
+            profile={profile}
+          />
         )}
       </div>
     </div>
